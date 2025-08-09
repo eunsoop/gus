@@ -218,7 +218,7 @@ impl App {
         let list = List::new(items)
             .highlight_style(Style::default().bg(Color::Blue))
             .highlight_symbol("> ")
-            .highlight_spacing(HighlightSpacing::Never);
+            .highlight_spacing(HighlightSpacing::WhenSelected);
 
         StatefulWidget::render(list, frame.area(), frame.buffer_mut(), &mut self.state);
     }
