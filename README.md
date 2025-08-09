@@ -5,6 +5,7 @@ Git User Switcher (GUS) is a simple command-line tool that allows you to switch 
 - [x] Add support for switching between user profile
 - [x] Add support for switching back to global profile
 - [ ] Add support for creating new user profiles
+- [ ] Sync profiles & ssh key between multiple devices 
 
 ## How does it work?
 GUS changes .git/config file in the current directory to the specified user configuration. It can also switch back to the global configuration. <br/>
