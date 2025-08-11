@@ -70,7 +70,12 @@ impl App {
                     continue;
                 }
                 match key.code {
-                    KeyCode::Esc => self.should_exit = true,
+                    KeyCode::Esc => {
+                        self.should_exit = true;
+                        terminal.clear().unwrap();
+                        println!("Exiting GUS...");
+                        return Ok(());
+                    },
                     KeyCode::Up => {
                         if self.state.selected().unwrap_or(0) > 1 {
                             self.cursor_up()
@@ -191,9 +196,11 @@ impl App {
         }else {
             let val = &self.credential_value[id-1];
             doc["user"] = toml_edit::table();
-            doc["user"]["email"] = toml_edit::value(val["email"].as_str().unwrap());
-            doc["user"]["name"] = toml_edit::value(val["name"].as_str().unwrap());
-            doc["core"]["sshCommand"] = toml_edit::value("ssh -i ".to_owned() + val["ssh_key"].as_str().unwrap());
+            val.get("email").map(|email| doc["user"]["email"] = toml_edit::value(email.as_str().unwrap()));
+            val.get("name").map(|name| doc["user"]["name"] = toml_edit::value(name.as_str().unwrap()));
+            val.get("ssh_key").map(|ssh_key| {
+                doc["core"]["sshCommand"] = toml_edit::value("ssh -i ".to_owned() + ssh_key.as_str().unwrap());
+            });
         }
 
         fs::write(".git/config", doc.to_string())
