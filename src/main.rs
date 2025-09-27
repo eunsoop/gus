@@ -1,3 +1,5 @@
+mod edit;
+
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
 use ratatui::style::{Color, Style};
@@ -177,34 +179,38 @@ impl App {
     }
 
     fn set_credential(&mut self, id: usize) -> Result<(), std::io::Error> {
-        let content = fs::read_to_string(".git/config")?;
-        let mut doc = content.parse::<DocumentMut>().unwrap();
+        let mut conf = edit::ConfigFile::new(".git/config");
 
         if id == 0 {
-            if let Some(table) = doc["user"].as_table_mut() {
-                table.remove("email");
-                table.remove("name");
-
-                if table.is_empty() {
-                    doc.remove("user");
-                }
-            }
-
-            if let Some(table) = doc["core"].as_table_mut() {
-                table.remove("sshCommand");
-            }
+            conf.find_line("core", "sshCommand").map(|line| conf.remove_line(line));
+            conf.find_line("user", "email").map(|line| conf.remove_line(line));
+            conf.find_line("user", "name").map(|line| conf.remove_line(line));
+            conf.find_section("user").map(|line| conf.remove_line(line));
         }else {
-            let val = &self.credential_value[id-1];
-            doc["user"] = toml_edit::table();
-            val.get("email").map(|email| doc["user"]["email"] = toml_edit::value(email.as_str().unwrap()));
-            val.get("name").map(|name| doc["user"]["name"] = toml_edit::value(name.as_str().unwrap()));
-            val.get("ssh_key").map(|ssh_key| {
-                doc["core"]["sshCommand"] = toml_edit::value("ssh -i ".to_owned() + ssh_key.as_str().unwrap());
-            });
+            let val = &self.credential_value[id - 1];
+            val.get("email")
+                .map(|email|
+                    conf.find_line("user", "email")
+                        .map(|pos| conf.update_line(pos, "email", email.as_str().unwrap()))
+                        .or_else(|| Option::from(conf.append_line("user", "email", email.as_str().unwrap())))
+                ).unwrap_or_else(|| conf.find_line("user", "email").or_else(|| conf.find_line("user", "email")).map(|_| ()));
+
+            val.get("name")
+                .map(|name|
+                    conf.find_line("user", "name")
+                        .map(|pos| conf.update_line(pos, "name", name.as_str().unwrap()))
+                        .or_else(|| Option::from(conf.append_line("user", "name", name.as_str().unwrap())))
+                ).unwrap_or_else(|| conf.find_line("user", "name").or_else(|| conf.find_line("user", "name")).map(|_| ()));
+
+            val.get("ssh_key")
+                .map(|ssh_key|
+                    conf.find_line("core", "sshCommand")
+                        .map(|pos| conf.update_line(pos, "sshCommand", format!("\"ssh -i {}\"", ssh_key.as_str().unwrap()).as_str()))
+                        .or_else(|| Option::from(conf.append_line("core", "sshCommand", format!("\"ssh -i {}\"", ssh_key.as_str().unwrap()).as_str())))
+                ).unwrap_or_else(|| conf.find_line("core", "sshCommand").or_else(|| conf.find_line("core", "sshCommand")).map(|_| ()));
         }
 
-        fs::write(".git/config", doc.to_string())
-            .map_err(|e| <std::io::Error as Into<_>>::into(e.into()))
+        conf.save(".git/config")
     }
 
     fn draw(&mut self, frame: &mut Frame) {
